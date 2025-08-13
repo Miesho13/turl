@@ -40,6 +40,33 @@ impl Write for TorStream {
     }
 }
 
+pub fn bootstrap() {
+    println!("Connecting to Tor directory server... ");
+    let tcp_dir = std::net::TcpStream::connect("198.251.84.163:22")
+        .expect("Failed to connect to the Tor directory server");
+
+    let mut tor_stream = TorStream::new(tcp_dir);
+    println!("Connected to Tor directory server");
+
+    let request_version = b"version 1.0\r\n";
+    tor_stream.write(request_version)
+        .expect("Failed to write to Tor directory stream");
+
+    let mut buf = Vec::new();
+    tor_stream.read(&mut buf)
+        .expect("Failed to read from Tor directory stream");
+
+    let request = b"GET /tor/status-vote/current/consensus-microdesc.z HTTP/1.0";
+    tor_stream.write(request)
+        .expect("Failed to write to Tor directory stream");
+
+    println!("Request sent, reading response...");
+    tor_stream.read_to_end(&mut buf)
+        .expect("Failed to read from Tor directory stream");
+
+    println!("Response: {}", String::from_utf8_lossy(&buf));
+}
+
 pub struct Tor {
     pub inner: ClientConnection,
     pub stream: TorStream,
